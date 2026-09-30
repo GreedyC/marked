@@ -3,6 +3,8 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+env:
+  npm_config_script_shell: bash
 jobs:
   full-suite:
     strategy:
@@ -20,3 +22,24 @@ jobs:
           node-version: ${{ matrix.node }}
       - run: npm ci
       - run: npm test
+  windows-node20-baseline:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: 4ee44f7f2167bec4079255e32b520dd47f16486c
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 20
+      - name: Verify the unmodified npm script has the same glob limitation
+        shell: pwsh
+        env:
+          npm_config_script_shell: cmd.exe
+        run: |
+          $output = npm run test:unit 2>&1 | Out-String
+          $result = $LASTEXITCODE
+          Write-Output $output
+          if ($result -eq 0 -or $output -notmatch 'Could not find.*unit.*\*\.test\.js') {
+            throw 'Expected the Node 20 Windows glob limitation on the unchanged baseline'
+          }
+          exit 0
